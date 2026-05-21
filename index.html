@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プレミアム ポモドーロ タイマー</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 設定画面 -->
+        <header class="app-header">
+            <h1>Pomodoro Focus</h1>
+            <p class="subtitle">シンプルで洗練された時間管理ツール</p>
+        </header>
+
+        <main class="app-main">
+            <!-- 設定カード -->
+            <section class="card config-card" id="config-card">
+                <h2 class="card-title">タイマー設定</h2>
+                
+                <div class="config-grid">
+                    <div class="input-group">
+                        <label for="work-time">ワークタイム (分)</label>
+                        <input type="number" id="work-time" min="1" max="180" value="25">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="short-break">シンキングタイム (分)</label>
+                        <input type="number" id="short-break" min="1" max="60" value="5">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="long-break">ロングブレイク (分)</label>
+                        <input type="number" id="long-break" min="1" max="120" value="15">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="long-break-interval">ロングブレイクの間隔</label>
+                        <div class="interval-wrapper">
+                            <input type="number" id="long-break-interval" min="0" max="20" value="0">
+                            <span class="hint">0で無効化</span>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="total-sets">目標セット数 (回)</label>
+                        <input type="number" id="total-sets" min="1" max="99" value="3">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="theme-select">カラーテーマ</label>
+                        <div class="select-wrapper">
+                            <select id="theme-select" class="theme-select-dropdown">
+                                <option value="classic">クラシック (Default)</option>
+                                <option value="sakura">サクラ (Pink / Green)</option>
+                                <option value="forest">フォレスト (Green / Gold)</option>
+                                <option value="cyberpunk">サイバーパンク (Neon / Cyan)</option>
+                                <option value="sunset">サンセット (Orange / Indigo)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="show-confirm" checked>
+                        <span class="checkbox-checkmark"></span>
+                        <span class="checkbox-text">スキップ・リセット時に確認ダイアログを表示</span>
+                    </label>
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="play-sound" checked>
+                        <span class="checkbox-checkmark"></span>
+                        <span class="checkbox-text">時間経過後に通知音を鳴らす</span>
+                    </label>
+                </div>
+
+                <div class="config-actions">
+                    <button id="start-btn" class="btn btn-primary">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        タイマーを開始する
+                    </button>
+                </div>
+            </section>
+
+            <!-- タイマー表示カード (PiPウィンドウに移行可能なコンテナ) -->
+            <section class="card timer-card hidden" id="timer-container">
+                <div class="timer-inner">
+                    <!-- 全体進捗バー -->
+                    <div class="overall-progress-wrapper">
+                        <div class="overall-progress-info">
+                            <span>全体の進捗</span>
+                            <span id="overall-progress-text">0%</span>
+                        </div>
+                        <div class="overall-progress-track">
+                            <div class="overall-progress-bar" id="overall-progress-bar"></div>
+                        </div>
+                    </div>
+
+                    <!-- ステータス表示 (JS互換用のダミー) -->
+                    <div class="timer-status hidden" style="display: none;">
+                        <h3 id="status-text">WORK TIME</h3>
+                    </div>
+ 
+                    <!-- 円形プログレスバー & カウントダウン -->
+                    <div class="progress-container">
+                        <svg class="progress-ring" viewBox="0 0 200 200">
+                            <!-- 外側リング (セッション進捗: r=88) -->
+                            <circle class="progress-ring-bg outer" cx="100" cy="100" r="88" />
+                            <circle class="progress-ring-bar outer" id="progress-bar" cx="100" cy="100" r="88" />
+                            <!-- 内側リング (全体進捗: r=76) -->
+                            <circle class="progress-ring-bg inner" cx="100" cy="100" r="76" />
+                            <circle class="progress-ring-bar inner" id="overall-progress-ring-bar" cx="100" cy="100" r="76" />
+                        </svg>
+                        <div class="countdown-display">
+                            <span id="status-badge" class="badge work">WORK TIME</span>
+                            <span id="time-display">25:00</span>
+                            <span id="overall-time-subtext" class="overall-subtext">0% | Left 00:00</span>
+                        </div>
+                    </div>
+
+                    <!-- セット情報 -->
+                    <div class="sets-display">
+                        <div class="sets-text">
+                            セット進行度: <span id="current-set-num">1</span>セット目
+                        </div>
+                        <div class="sets-dots" id="sets-dots-container">
+                            <!-- JavaScriptで動的にドットを生成 -->
+                        </div>
+                    </div>
+
+                    <!-- 操作ボタン -->
+                    <div class="timer-controls">
+                        <button id="control-pause-btn" class="btn btn-icon btn-secondary" title="一時停止/再開">
+                            <svg class="icon pause-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                            <svg class="icon play-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </button>
+                        
+                        <button id="control-restart-btn" class="btn btn-icon btn-secondary" title="現在のセッションを最初に戻す">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+                        </button>
+                        
+                        <button id="control-skip-btn" class="btn btn-icon btn-secondary" title="スキップ">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+                        </button>
+                        
+                        <button id="control-reset-btn" class="btn btn-icon btn-danger" title="リセットして設定に戻る">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+                        </button>
+                    </div>
+
+                    <!-- ミニウィンドウ切り替えボタン (メイン画面のみ表示) -->
+                    <div class="pip-control-wrapper" id="pip-control-wrapper">
+                        <button id="pip-btn" class="btn btn-text">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><path d="M7 2h10"></path><rect x="14" y="14" width="8" height="8" rx="1" ry="1"></rect></svg>
+                            常に手前に表示 (ミニウィンドウ)
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer">
+            <p>ミニウィンドウ機能は、Chrome / Edge 等の対応ブラウザでご利用いただけます。</p>
+        </footer>
+    </div>
+
+    <!-- 通知用のオーディオ要素 (組み込みのビープ音を使用するため、JSで動的生成しても良いが、一応プレースホルダー) -->
+    <audio id="notification-sound" preload="auto"></audio>
+
+    <script src="app.js?v=2"></script>
+</body>
+</html>
